@@ -29,6 +29,7 @@ void ECIESWrapper::Init(v8::Local<v8::Object> exports) {
   Nan::SetPrototypeMethod(tpl, "setClientPublicKey", SetClientPublicKey);
   Nan::SetPrototypeMethod(tpl, "setPrivateKey", SetPrivateKey);
   Nan::SetPrototypeMethod(tpl, "encrypt", Encrypt);
+  Nan::SetPrototypeMethod(tpl, "decrypt", Decrypt);
   // Test code
   Nan::SetPrototypeMethod(tpl, "getGazePoint", GetGazePoint);
   Nan::SetPrototypeMethod(tpl, "plusOne", PlusOne);
@@ -127,35 +128,45 @@ void ECIESWrapper::Encrypt(const Nan::FunctionCallbackInfo<v8::Value>& args) {
 
   // printf("plain text: %s, length: %d ", text, text_length);
 
-  // v8::Local<v8::Object> pub_object = args[1]->ToObject();
-  // char* pub = (char*)node::Buffer::Data(pub_object);
-  // uint32_t pub_object_length = (uint32_t)node::Buffer::Length(pub_object);
-
   ECIES_size_t len = text_length;
-  ECIES_byte_t *encrypted = (ECIES_byte_t*)malloc(len + ECIES_OVERHEAD);
+  ECIES_byte_t* encrypted = (ECIES_byte_t*) malloc(len + ECIES_OVERHEAD);
   char *decrypted = (char*)malloc(len);
   
   ECIES_encrypt(encrypted, text, len, &ECIESWrapper::publicKey);
 
   args.GetReturnValue().Set(Nan::CopyBuffer(reinterpret_cast<char*>(encrypted), len + ECIES_OVERHEAD).ToLocalChecked());
 
-  char *buf = (char*)malloc(2 * (len + ECIES_OVERHEAD) + 1);
-  hex_dump(buf, encrypted, len + ECIES_OVERHEAD);
-  printf("encrypted hex: %s\n", buf);
-  free(buf);
-
-  if (ECIES_decrypt(decrypted, len, encrypted, &ECIESWrapper::privateKey) < 0) /* decryption */
-    printf("decryption failed!\n");
-  else
-    printf("after encryption/decryption: %s\n", decrypted);
-
-  // args.GetReturnValue().Set(Nan::CopyBuffer(reinterpret_cast<char*>(text), len).ToLocalChecked());
-
-  // free(encrypted);
-  // free(decrypted);
+  free(encrypted);
 }
 
-// Test code
+// Decryption
+void ECIESWrapper::Decrypt(const Nan::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Local<v8::Object> text_object = args[0]->ToObject();
+  ECIES_byte_t* text = (ECIES_byte_t*)node::Buffer::Data(text_object);
+  uint32_t text_length = (uint32_t)node::Buffer::Length(text_object);
+
+  int decrypt_len = (int)args[1]->IntegerValue();
+
+  ECIES_size_t len = text_length;
+  char *decrypted = (char*)malloc(decrypt_len);
+
+  if (ECIES_decrypt(decrypted, decrypt_len, (ECIES_byte_t*)text, &ECIESWrapper::privateKey) < 0) {
+    printf("decryption failed!\n");
+  } else {
+    // printf("after encryption/decryption: %s\n", decrypted);
+  }
+
+  args.GetReturnValue().Set(Nan::CopyBuffer(reinterpret_cast<char*>(decrypted), decrypt_len).ToLocalChecked());
+
+  free(decrypted);
+}
+
+/**
+ * =========================
+ *        Test code
+ * =========================
+*/
+// This is a function for callback
 void ECIESWrapper::GetGazePoint(const Nan::FunctionCallbackInfo<v8::Value>& args) {
 	// Isolate* isolate = args.GetIsolate();
 

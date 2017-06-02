@@ -1,5 +1,6 @@
 // app.js
 const addon = require('./build/Release/ECIES');
+var assert = require('assert');
 
 const obj = new addon.ECIESWrapper(10);
 
@@ -30,13 +31,26 @@ var clientKeys = {
 console.log(obj.setClientPublicKey(clientKeys.pub.x, clientKeys.pub.y));
 console.log(obj.setPrivateKey(serverKeys.priv));
 
-// Encryption
-var data = "test text";
-var length = Buffer.byteLength(data);
-var buf = new Buffer(length);
-buf.write(data, 0, 'UTF8');
-var encrypted = obj.encrypt(buf, buf);
-console.log(encrypted.toString('hex'));
+setInterval(function() {
+    // Encryption
+    // var data = "test text";
+    // var length = Buffer.byteLength(data);
+    // var buf = new Buffer(length);
+    // buf.write(data, 0, 'UTF8');
+
+    var buf = new Buffer([0x00, 0x94, 0x4a, 0x49, 0x5c, 0xff, 0xb0, 0xdc, 0x51, 0x33, 0x48, 0x73, 0x3c, 0x98, 0x69, 0x7b, 0x23, 0xc6, 0x8b, 0x45, 0x67]);
+
+    var encrypted = obj.encrypt(buf);
+    // console.log(encrypted.toString('hex'));
+
+    // Decryption 처음 인크립션한 길이를 알아야 디크립션이 가능함
+    var decrypted = obj.decrypt(encrypted, Buffer.byteLength(buf));
+    console.log(decrypted);
+
+    assert.deepEqual(decrypted, buf);
+
+}, 500);
+
 
 
 
