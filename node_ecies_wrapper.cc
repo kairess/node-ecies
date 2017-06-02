@@ -5,7 +5,7 @@ namespace node_ecies {
 
 Nan::Persistent<v8::Function> ECIESWrapper::constructor;
 
-ECIES_privkey_t ECIESWrapper::privateKey = {0};
+ECIES_privkey_t ECIESWrapper::privateKey = {};
 ECIES_pubkey_t ECIESWrapper::publicKey = {{0},{0}};
 
 ECIESWrapper::ECIESWrapper(double value) : value_(value) {
@@ -26,6 +26,8 @@ void ECIESWrapper::Init(v8::Local<v8::Object> exports) {
   // Prototype
   Nan::SetPrototypeMethod(tpl, "generateKeys", GenerateKeys);
   Nan::SetPrototypeMethod(tpl, "getKeys", GetKeys);
+  Nan::SetPrototypeMethod(tpl, "setClientPublicKey", SetClientPublicKey);
+  Nan::SetPrototypeMethod(tpl, "setPrivateKey", SetPrivateKey);
   Nan::SetPrototypeMethod(tpl, "encrypt", Encrypt);
   // Test code
   Nan::SetPrototypeMethod(tpl, "getGazePoint", GetGazePoint);
@@ -74,7 +76,7 @@ void ECIESWrapper::GenerateKeys(const Nan::FunctionCallbackInfo<v8::Value>& args
   args.GetReturnValue().Set(result);
 }
 
-// Get random keys
+// Get keys
 void ECIESWrapper::GetKeys(const Nan::FunctionCallbackInfo<v8::Value>& args) {
   v8::Local<v8::Object> result = Nan::New<v8::Object>();
   v8::Local<v8::Object> resultPub = Nan::New<v8::Object>();
@@ -86,43 +88,68 @@ void ECIESWrapper::GetKeys(const Nan::FunctionCallbackInfo<v8::Value>& args) {
   args.GetReturnValue().Set(result);
 }
 
+// Set public key
+void ECIESWrapper::SetClientPublicKey(const Nan::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Local<v8::Object> x_object = args[0]->ToObject();
+  char* x = (char*)node::Buffer::Data(x_object);
+  uint32_t x_length = (uint32_t)node::Buffer::Length(x_object);
+
+  v8::Local<v8::Object> y_object = args[1]->ToObject();
+  char* y = (char*)node::Buffer::Data(y_object);
+  uint32_t y_length = (uint32_t)node::Buffer::Length(y_object);
+
+  memcpy(ECIESWrapper::publicKey.x, x, x_length);
+  memcpy(ECIESWrapper::publicKey.y, y, y_length);
+
+  v8::Local<v8::Object> resultPub = Nan::New<v8::Object>();
+  resultPub->Set(Nan::New("x").ToLocalChecked(), Nan::CopyBuffer((char*)ECIESWrapper::publicKey.x, 21).ToLocalChecked());
+  resultPub->Set(Nan::New("y").ToLocalChecked(), Nan::CopyBuffer((char*)ECIESWrapper::publicKey.y, 21).ToLocalChecked());
+
+  args.GetReturnValue().Set(resultPub);
+}
+
+// Set private key
+void ECIESWrapper::SetPrivateKey(const Nan::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Local<v8::Object> priv_object = args[0]->ToObject();
+  char* priv = (char*)node::Buffer::Data(priv_object);
+  uint32_t priv_length = (uint32_t)node::Buffer::Length(priv_object);
+
+  memcpy(ECIESWrapper::privateKey.k, priv, priv_length);
+
+  args.GetReturnValue().Set(Nan::CopyBuffer((char*)ECIESWrapper::privateKey.k, 21).ToLocalChecked());
+}
+
 // Encryption
 void ECIESWrapper::Encrypt(const Nan::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Local<v8::Object> bufferObj = args[0]->ToObject();
-  char* text = (char*)node::Buffer::Data(bufferObj);
-  uint32_t bufferLength = (uint32_t)node::Buffer::Length(bufferObj);
+  v8::Local<v8::Object> text_object = args[0]->ToObject();
+  char* text = (char*)node::Buffer::Data(text_object);
+  uint32_t text_length = (uint32_t)node::Buffer::Length(text_object);
 
-  printf("bufferData: %s\n, bufferLength %d\n", text, bufferLength);
+  // printf("plain text: %s, length: %d ", text, text_length);
+
+  // v8::Local<v8::Object> pub_object = args[1]->ToObject();
+  // char* pub = (char*)node::Buffer::Data(pub_object);
+  // uint32_t pub_object_length = (uint32_t)node::Buffer::Length(pub_object);
+
+  ECIES_size_t len = text_length;
+  ECIES_byte_t *encrypted = (ECIES_byte_t*)malloc(len + ECIES_OVERHEAD);
+  char *decrypted = (char*)malloc(len);
   
-  // ECIES_pubkey_t public2 = {
-  //   { 0x01, 0xc5, 0x6d, 0x30, 0x2c, 0xf6, 0x42, 0xa8, 0xe1, 0xba, 0x4b, 0x48, 0xcc, 0x4f, 0xbe, 0x28, 0x45, 0xee, 0x32, 0xdc, 0xe7 },
-  //   { 0x04, 0x5f, 0x46, 0xeb, 0x30, 0x3e, 0xdf, 0x2e, 0x62, 0xf7, 0x4b, 0xd6, 0x83, 0x68, 0xd9, 0x79, 0xe2, 0x65, 0xee, 0x3c, 0x03 },
-  // };
-  
-  // ECIES_privkey_t private2 = {
-  //   { 0x00, 0xe1, 0x0e, 0x78, 0x70, 0x36, 0x94, 0x1e, 0x6c, 0x78, 0xda, 0xf8, 0xa0, 0xe8, 0xe1, 0xdb, 0xfa, 0xc6, 0x8e, 0x26, 0xd2 },
-  // };
+  ECIES_encrypt(encrypted, text, len, &ECIESWrapper::publicKey);
 
-  // ECIES_size_t len = bufferLength;
-  // ECIES_byte_t *encrypted = (ECIES_byte_t*)malloc(len + ECIES_OVERHEAD);
-  // char *decrypted = (char*)malloc(len);
+  args.GetReturnValue().Set(Nan::CopyBuffer(reinterpret_cast<char*>(encrypted), len + ECIES_OVERHEAD).ToLocalChecked());
 
-  // printf("plain text: %s\n", text);
-  // ECIES_encrypt(encrypted, text, len, &public2);   /* encryption */
+  char *buf = (char*)malloc(2 * (len + ECIES_OVERHEAD) + 1);
+  hex_dump(buf, encrypted, len + ECIES_OVERHEAD);
+  printf("encrypted hex: %s\n", buf);
+  free(buf);
 
-  // char *buf = (char*)malloc(2 * (len + ECIES_OVERHEAD) + 1);
-  // hex_dump(buf, encrypted, len + ECIES_OVERHEAD);
-  
-  // printf("encrypted hex: %s\n", buf);
-  
-  // free(buf);
+  if (ECIES_decrypt(decrypted, len, encrypted, &ECIESWrapper::privateKey) < 0) /* decryption */
+    printf("decryption failed!\n");
+  else
+    printf("after encryption/decryption: %s\n", decrypted);
 
-  // if (ECIES_decrypt(decrypted, len, encrypted, &private2) < 0) /* decryption */
-  //   printf("decryption failed!\n");
-  // else
-  //   printf("after encryption/decryption: %s\n", decrypted);
-
-  // args.GetReturnValue().Set(Nan::CopyBuffer(text, bufferLength).ToLocalChecked());
+  // args.GetReturnValue().Set(Nan::CopyBuffer(reinterpret_cast<char*>(text), len).ToLocalChecked());
 
   // free(encrypted);
   // free(decrypted);

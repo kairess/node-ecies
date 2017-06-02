@@ -21,6 +21,8 @@ class ECIESWrapper : public node::ObjectWrap {
 	static void New(const Nan::FunctionCallbackInfo<v8::Value>& args);
 	static void GenerateKeys(const Nan::FunctionCallbackInfo<v8::Value>& args);
 	static void GetKeys(const Nan::FunctionCallbackInfo<v8::Value>& args);
+	static void SetClientPublicKey(const Nan::FunctionCallbackInfo<v8::Value>& args);
+	static void SetPrivateKey(const Nan::FunctionCallbackInfo<v8::Value>& args);
 	static void Encrypt(const Nan::FunctionCallbackInfo<v8::Value>& args);
 
 	// Test code

@@ -9,7 +9,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 static inline uint32_t __swap32(uint32_t val){
   return
@@ -338,10 +337,9 @@ static void get_random_exponent(exp_t exp)
   int r;
   long int val;
   
-  srand(time(NULL));
   do {
     for(; ptr >= buf + RAND_BYTES; ){
-      val = rand();
+      val = random();
       *ptr-- = val;
       for(r = 1; r < RAND_BYTES; r++){
         val >>= 8;
@@ -349,7 +347,7 @@ static void get_random_exponent(exp_t exp)
       }
     }
     if(ptr >= buf){
-      val = rand();
+      val = random();
       for(; ptr >= buf; ){
         *ptr-- = val;
         val >>= 8;
