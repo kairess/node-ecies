@@ -130,7 +130,6 @@ void ECIESWrapper::Encrypt(const Nan::FunctionCallbackInfo<v8::Value>& args) {
 
   ECIES_size_t len = text_length;
   ECIES_byte_t* encrypted = (ECIES_byte_t*) malloc(len + ECIES_OVERHEAD);
-  char *decrypted = (char*)malloc(len);
   
   ECIES_encrypt(encrypted, text, len, &ECIESWrapper::publicKey);
 
@@ -143,20 +142,17 @@ void ECIESWrapper::Encrypt(const Nan::FunctionCallbackInfo<v8::Value>& args) {
 void ECIESWrapper::Decrypt(const Nan::FunctionCallbackInfo<v8::Value>& args) {
   v8::Local<v8::Object> text_object = args[0]->ToObject();
   ECIES_byte_t* text = (ECIES_byte_t*)node::Buffer::Data(text_object);
-  uint32_t text_length = (uint32_t)node::Buffer::Length(text_object);
+  // uint32_t text_length = (uint32_t)node::Buffer::Length(text_object);
 
   int decrypt_len = (int)args[1]->IntegerValue();
 
-  ECIES_size_t len = text_length;
   char *decrypted = (char*)malloc(decrypt_len);
 
   if (ECIES_decrypt(decrypted, decrypt_len, (ECIES_byte_t*)text, &ECIESWrapper::privateKey) < 0) {
-    printf("decryption failed!\n");
+    args.GetReturnValue().Set(Nan::New(false));
   } else {
-    // printf("after encryption/decryption: %s\n", decrypted);
+    args.GetReturnValue().Set(Nan::CopyBuffer(reinterpret_cast<char*>(decrypted), decrypt_len).ToLocalChecked());
   }
-
-  args.GetReturnValue().Set(Nan::CopyBuffer(reinterpret_cast<char*>(decrypted), decrypt_len).ToLocalChecked());
 
   free(decrypted);
 }
